@@ -1,4 +1,4 @@
-import std/[os, base64, json, strutils]
+import std/[os, base64, json, strutils, times]
 
 func splitToken(input: string): 
   tuple[header: string, payload: string, signature: string]
@@ -18,6 +18,23 @@ proc dec2Json(bstr: string): string =
     .parseJson()
     .pretty()
 
+proc pickTimestamp(node: JsonNode, key = ""): string = 
+  case node.kind
+  of JInt:
+    let ts = node.getInt()
+    result.add(key)
+    result.add(": ")
+    result.add($fromUnix(ts))
+    result.add("\n")
+  of JObject:
+    for key, value in node.pairs:
+      result.add(pickTimestamp(value, key))
+  of JArray:
+    for i in 0..<node.len:
+      result.add(pickTimestamp(node[i], key))
+  else:
+    discard
+
 proc jwtDec(token: string):
   tuple[header: string, payload: string, signature: string] = 
   let (header, payload, signature) = token.splitToken()
@@ -35,7 +52,9 @@ when isMainModule:
   echo header
   echo "\e[32m==================== payload ====================\e[0m"
   echo payload
-  echo "\e[33m=================== signature ===================\e[0m"
+  echo "\e[33m=================== timestamp ===================\e[0m"
+  echo payload.parseJson().pickTimestamp()
+  echo "\e[34m=================== signature ===================\e[0m"
   echo signature
 
 
