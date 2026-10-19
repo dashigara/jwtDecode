@@ -1,4 +1,4 @@
-import std/[os, base64, json, strutils, times]
+import std/[base64, json, strutils, times]
 
 func splitToken(input: string): 
   tuple[header: string, payload: string, signature: string]
@@ -19,13 +19,14 @@ proc dec2Json(bstr: string): string =
     .pretty()
 
 proc pickTimestamp(node: JsonNode, key = ""): string = 
+  ## timestamp部分をISO 8601文字列に変換
   case node.kind
   of JInt:
     let ts = node.getInt()
     result.add(key)
     result.add(": ")
     result.add($fromUnix(ts))
-    result.add("\n")
+    result.add("\r\n")
   of JObject:
     for key, value in node.pairs:
       result.add(pickTimestamp(value, key))
@@ -35,7 +36,10 @@ proc pickTimestamp(node: JsonNode, key = ""): string =
   else:
     discard
 
-proc jwtDec(token: string):
+proc pickTs*(json: string): string =
+  pickTimestamp(json.parseJson())
+
+proc jwtDec*(token: string):
   tuple[header: string, payload: string, signature: string] = 
   let (header, payload, signature) = token.splitToken()
   return (header.dec2Json(), payload.dec2Json(), signature)
@@ -56,5 +60,4 @@ when isMainModule:
   echo payload.parseJson().pickTimestamp()
   echo "\e[34m=================== signature ===================\e[0m"
   echo signature
-
 
